@@ -1,93 +1,103 @@
-# TWRP Device configuration for realme X2 Pro (samurai / RMX1931)
+# TWRP 14.1 — realme X2 Pro (samurai / RMX1931)
 
-Branch target: **Android 12–16 FBE** (including Android 16 / 16.2 QPR2 custom ROMs such as LineageOS 23).
+Device tree for **minimal-manifest-twrp `twrp-14.1`** (AOSP Android 14 base).
+
+Includes Android **16 / 16.2 QPR2** FBE decrypt alignment (fscrypt v2 + metadata + wrappedkey).
 
 ## Features
 
-Works:
-- ADB
-- Decryption of `/data` (FBE v2 + metadata encryption + wrappedkey)
-- Screen brightness settings
-- Correct screenshot color
-- MTP
-- Flashing (ROMs, images, Magisk, etc.)
-- Backup/Restore
-- USB OTG
+- ADB / ADB Sideload
+- `/data` FBE decrypt (Keymaster 4.0 + Gatekeeper + qseecomd)
+- MTP, USB OTG
+- Flash / backup / restore
+- Ozip key support (stock Realme packages)
 
-## Android 16 decrypt notes
-
-Tree is aligned with LOS 23 / A16 `fstab.qcom` for samurai:
-
-- `TW_USE_FSCRYPT_POLICY := 2`
-- `fileencryption=aes-256-xts:aes-256-cts:v2+inlinecrypt_optimized,wrappedkey`
-- `keydirectory=/metadata/vold/metadata_encryption`
-- metadata crypto props (`dm-default-key`, format version 2)
-- Keymaster 4.0 + Gatekeeper (same as A16 vendor for this device)
-
-### After flashing a new ROM kernel
-
-Update prebuilts from the ROM you want to decrypt:
+## Build (TWRP 14.1)
 
 ```bash
-# From ROM boot.img / dtbo.img
-cp Image.gz-dtb device/realme/samurai/prebuilt/
-cp dtbo.img device/realme/samurai/prebuilt/
-```
+# Source
+repo init --depth=1 \
+  -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git \
+  -b twrp-14.1
+repo sync -j$(nproc)
 
-If decrypt still fails, re-extract from the **vendor** partition of that ROM:
+# Device tree
+git clone https://github.com/nayem8854/twrp_device_realme_RMX1931.git \
+  -b twrp-14.1 device/realme/samurai
 
-- `qseecomd`
-- `android.hardware.keymaster@4.0-service-qti`
-- `android.hardware.gatekeeper@1.0-service-qti`
-- matching `vendor/lib64` deps
+# QCOM decrypt common (also listed in twrp.dependencies)
+git clone https://github.com/TeamWin/android_device_qcom_twrp-common.git \
+  -b android-14.1 device/qcom/twrp-common
 
-Then run `ldcheck` on `$OUT/recovery/root` after build.
-
-### Clean decrypt test
-
-1. Boot TWRP → **Wipe → Format Data** (types `yes`)
-2. Flash ROM → reboot system → set PIN/password
-3. Reboot recovery → enter same PIN → `/data` should mount
-
-## Compile
-
-First checkout minimal TWRP source:
-
-```bash
-repo init --depth=1 -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1
-repo sync
-git clone https://github.com/zahid5656/twrp_device_realme_RMX1931.git -b twrp-12.1 device/realme/samurai
-```
-
-Or use this local tree as `device/realme/samurai`.
-
-Build:
-
-```bash
+# Build
+export ALLOW_MISSING_DEPENDENCIES=true
 . build/envsetup.sh
 lunch twrp_samurai-eng
 mka recoveryimage
 ```
 
-Test (do not flash until booted successfully):
+Output (typical):
+
+```text
+out/target/product/samurai/recovery.img
+```
+
+Test:
 
 ```bash
 fastboot boot out/target/product/samurai/recovery.img
-# or, depending on PRODUCT_DEVICE:
-fastboot boot out/target/product/RMX1931/recovery.img
-```
-
-Flash when confirmed:
-
-```bash
+# flash when OK:
 fastboot flash recovery out/target/product/samurai/recovery.img
 ```
 
-## Debug decrypt
+## Android 16 decrypt notes
+
+Aligned with LOS 23 `fstab.qcom` for samurai:
+
+| Setting | Value |
+|--------|--------|
+| FSCRYPT policy | `TW_USE_FSCRYPT_POLICY := 2` |
+| fileencryption | `aes-256-xts:aes-256-cts:v2+inlinecrypt_optimized,wrappedkey` |
+| keydirectory | `/metadata/vold/metadata_encryption` |
+| Keymaster | 4.0 (same as A16 vendor on this device) |
+
+### After flashing a new ROM
+
+1. Update `prebuilt/Image.gz-dtb` + `prebuilt/dtbo.img` from that ROM’s boot/dtbo if recovery won’t boot or decrypt fails.
+2. Re-extract from **vendor** if needed: `qseecomd`, keymaster 4.0, gatekeeper + `vendor/lib64` deps; run `ldcheck` on `$OUT/recovery/root`.
+
+### Clean decrypt test
+
+1. TWRP → Wipe → **Format Data**
+2. Flash ROM → boot → set PIN
+3. Reboot recovery → enter PIN → `/data` mounts
+
+## Debug
 
 `init.recovery.qcom.rc` enables:
 
 - `prepdecrypt.setpatch=true`
 - `prepdecrypt.loglevel=2`
 
-Check `/tmp/recovery.log` or `adb shell cat /tmp/recovery.log` after boot.
+```bash
+adb shell cat /tmp/recovery.log
+```
+
+## Branches
+
+| Branch | TWRP source |
+|--------|-------------|
+| `twrp-12.1` / `twrp-12.1L` | `platform_manifest_twrp_aosp` **twrp-12.1** |
+| `twrp-14.1` | `platform_manifest_twrp_aosp` **twrp-14.1** |
+
+## Layout
+
+```text
+device/realme/samurai/
+  BoardConfig.mk
+  device.mk
+  twrp_samurai.mk
+  twrp.dependencies          # qcom twrp-common @ android-14.1
+  recovery/root/             # init, fstab, crypto blobs
+  prebuilt/                  # Image.gz-dtb, dtbo.img
+```

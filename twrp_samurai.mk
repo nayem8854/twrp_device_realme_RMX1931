@@ -1,20 +1,24 @@
 #
-# Copyright (C) 2022 Team Win Recovery Project
+# Copyright (C) 2022-2026 Team Win Recovery Project
 #
 # SPDX-License-Identifier: Apache-2.0
+#
+# Product makefile for twrp-14.1 (twrp_ prefix required)
 #
 
 # Release name
 PRODUCT_RELEASE_NAME := samurai
 
-# Inherit from common AOSP config
+# Inherit AOSP base (order matters on A14)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/base.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit_only.mk)
+# FBE / modern storage helpers (safe no-op when unused)
+$(call inherit-product, $(SRC_TARGET_DIR)/product/emulated_storage.mk)
 
-# Inherit from our custom product configuration
+# TWRP common
 $(call inherit-product, vendor/twrp/config/common.mk)
 
-# Inherit device configuration
+# Device
 $(call inherit-product, device/realme/samurai/device.mk)
 
 PRODUCT_DEVICE := samurai
