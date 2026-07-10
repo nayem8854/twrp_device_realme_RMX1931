@@ -110,15 +110,16 @@ BOARD_ROOT_EXTRA_FOLDERS := bluetooth dsp firmware persist
 BOARD_SUPPRESS_SECURE_ERASE := true
 TARGET_SYSTEM_PROP += $(DEVICE_PATH)/system.prop
 
-# Crypto
+# Crypto (FBE v2 + metadata encryption — Android 11–16 / QPR2)
 BOARD_USES_METADATA_PARTITION := true
 BOARD_USES_QCOM_FBE_DECRYPTION := true
 TW_INCLUDE_CRYPTO := true
 TW_INCLUDE_CRYPTO_FBE := true
 TW_INCLUDE_FBE_METADATA_DECRYPT := true
-TW_USE_FSCRYPT_POLICY := 1
+# Policy v2 required for A11+ FBE (LOS 23 / A16 uses v2+inlinecrypt+wrappedkey)
+TW_USE_FSCRYPT_POLICY := 2
 
-# Hack: Prevent anti rollback
+# Hack: Prevent anti rollback (match/exceed ROM security patch for decrypt)
 PLATFORM_VERSION := 99.87.36
 PLATFORM_SECURITY_PATCH := 2127-12-31
 VENDOR_SECURITY_PATCH := $(PLATFORM_SECURITY_PATCH)
@@ -126,15 +127,17 @@ PLATFORM_VERSION_LAST_STABLE := $(PLATFORM_VERSION)
 BOOT_SECURITY_PATCH := $(PLATFORM_SECURITY_PATCH)
 
 # TWRP Build Flags
-TW_DEVICE_VERSION := Realme X2 Pro
+TW_DEVICE_VERSION := A16-decrypt
 TW_THEME := portrait_hdpi
 RECOVERY_SDCARD_ON_DATA := true
 TARGET_RECOVERY_QCOM_RTC_FIX := true
+TARGET_RECOVERY_FSTAB := $(DEVICE_PATH)/recovery/root/system/etc/recovery.fstab
 TW_EXCLUDE_DEFAULT_USB_INIT := true
 TW_EXTRA_LANGUAGES := true
 TW_INCLUDE_NTFS_3G := true
 TW_USE_TOOLBOX := true
 TW_INCLUDE_RESETPROP := true
+TW_INCLUDE_LIBRESETPROP := true
 TW_INPUT_BLACKLIST := "hbtp_vm"
 TW_BRIGHTNESS_PATH := "/sys/class/backlight/panel0-backlight/brightness"
 TW_MAX_BRIGHTNESS := 1023
@@ -151,6 +154,8 @@ TW_FORCE_KEYMASTER_VER := true
 TW_HAS_EDL_MODE := true
 TW_OZIP_DECRYPT_KEY := 1c4c1ea3a12531ae491b21bb31613c11
 TW_SKIP_COMPATIBILITY_CHECK := true
+# Wait for QSEE before keymaster (helps FBE decrypt on msmnile)
+TARGET_KEYMASTER_WAIT_FOR_QSEE := true
 
 # TWRP Debug Flags
 TWRP_INCLUDE_LOGCAT := true
