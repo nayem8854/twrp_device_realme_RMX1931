@@ -15,13 +15,12 @@ jobs:
     timeout-minutes: 360
 
     steps:
-      - name: Checkout
+      - name: Checkout workflow repository
         uses: actions/checkout@v4
 
       - name: Install Dependencies
         run: |
           sudo apt update
-
           sudo apt install -y \
             bc \
             bison \
@@ -61,16 +60,12 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
-      - name: Install Repo
+      - name: Install Repo Tool
         run: |
           mkdir -p ~/bin
-          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          curl -fsSL https://storage.googleapis.com/git-repo-downloads/repo -o ~/bin/repo
           chmod +x ~/bin/repo
-          echo "$HOME/bin" >> $GITHUB_PATH
-
-      #########################################################
-      # Restore ccache
-      #########################################################
+          echo "$HOME/bin" >> "$GITHUB_PATH"
 
       - name: Restore ccache
         uses: actions/cache@v4
@@ -80,8 +75,13 @@ jobs:
           restore-keys: |
             ccache-${{ runner.os }}-
 
+      - name: Create workspace
+        run: |
+          mkdir -p workspace
+
       - name: Initialize Source
         run: |
+          cd workspace
           repo init \
             --depth=1 \
             -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git \
@@ -89,61 +89,60 @@ jobs:
 
       - name: Repo Sync
         run: |
+          cd workspace
           repo sync \
             -c \
             --force-sync \
             --no-clone-bundle \
             --no-tags \
-            -j$(nproc)
+            -j"$(nproc)"
 
       - name: Remove .repo
-        run: rm -rf .repo
+        run: |
+          rm -rf workspace/.repo
 
       - name: Clone Device Tree
         run: |
-          mkdir -p device/realme
+          mkdir -p workspace/device/realme
+
           git clone --depth=1 \
             https://github.com/nayem8854/twrp_device_realme_RMX1931.git \
-            device/realme/samurai
+            workspace/device/realme/samurai
 
       - name: Build Recovery
         env:
           USE_CCACHE: 1
           CCACHE_DIR: ~/.ccache
         run: |
+          cd workspace
+
+          export USE_CCACHE=1
+          export CCACHE_DIR=$HOME/.ccache
+
           ccache -M 10G
           ccache -z
 
           source build/envsetup.sh
           lunch twrp_samurai-eng
-          mka recoveryimage -j$(nproc)
+          mka recoveryimage -j"$(nproc)"
 
           ccache -s
 
-      #########################################################
-      # Upload Artifact
-      #########################################################
-
-      - name: Upload Recovery Image
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: recovery
-          path: out/target/product/samurai/recovery.img
+          path: workspace/out/target/product/samurai/recovery.img
 
-      #########################################################
-      # GitHub Release
-      #########################################################
-
-      - name: Generate Tag
+      - name: Generate Release Tag
         id: tag
         run: |
-          echo "tag=TWRP-$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+          echo "tag=TWRP-$(date +'%Y%m%d-%H%M%S')" >> "$GITHUB_OUTPUT"
 
-      - name: Create Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: TWRP ${{ steps.tag.outputs.tag }}
           generate_release_notes: true
-          files: |
-            out/target/product/samurai/recovery.img
+          files: workspace/out/target/product/samurai/recovery.img
