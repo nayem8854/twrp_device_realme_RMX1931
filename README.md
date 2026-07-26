@@ -51,17 +51,41 @@ Then run `ldcheck` on `$OUT/recovery/root` after build.
 
 ## Compile
 
+### OrangeFox Recovery Build
+
+Init OrangeFox Manifest (R11.1 / R12.1):
+
+```bash
+repo init --depth=1 -u https://gitlab.com/OrangeFox/manifest.git -b fox_12.1
+repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+```
+
+Place this device tree in `device/realme/samurai`:
+
+```bash
+git clone https://github.com/zahid5656/twrp_device_realme_RMX1931.git -b twrp-12.1 device/realme/samurai
+```
+
+Build OrangeFox:
+
+```bash
+. build/envsetup.sh
+lunch fox_samurai-eng
+mka recoveryimage
+# Or using OrangeFox build script:
+# ./vendor/fox/bin/build.sh --device samurai --type Official
+```
+
+### TWRP Build
+
 First checkout minimal TWRP source:
 
 ```bash
 repo init --depth=1 -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1
 repo sync
-git clone https://github.com/zahid5656/twrp_device_realme_RMX1931.git -b twrp-12.1 device/realme/samurai
 ```
 
-Or use this local tree as `device/realme/samurai`.
-
-Build:
+Build TWRP:
 
 ```bash
 . build/envsetup.sh
@@ -69,12 +93,12 @@ lunch twrp_samurai-eng
 mka recoveryimage
 ```
 
+### Test & Flash
+
 Test (do not flash until booted successfully):
 
 ```bash
 fastboot boot out/target/product/samurai/recovery.img
-# or, depending on PRODUCT_DEVICE:
-fastboot boot out/target/product/RMX1931/recovery.img
 ```
 
 Flash when confirmed:
@@ -91,3 +115,4 @@ fastboot flash recovery out/target/product/samurai/recovery.img
 - `prepdecrypt.loglevel=2`
 
 Check `/tmp/recovery.log` or `adb shell cat /tmp/recovery.log` after boot.
+
