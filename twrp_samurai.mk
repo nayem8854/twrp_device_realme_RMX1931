@@ -15,7 +15,7 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit_only.mk)
 $(call inherit-product, vendor/twrp/config/common.mk)
 
 # Inherit device configuration
-$(call inherit-product, device/realme/samurai/device.mk)
+$(call inherit-product, $(LOCAL_DIR)/device.mk)
 
 PRODUCT_DEVICE := samurai
 PRODUCT_NAME := twrp_samurai
